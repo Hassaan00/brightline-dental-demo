@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
+import { createBooking, SlotTaken } from "@/lib/store";
 export const dynamic = "force-dynamic";
-const store: any[] = [];
 export async function POST(req: Request) {
   const b = await req.json().catch(() => null);
-  if (!b || !b.service || !b.dentist || !b.date || !b.time || !b.name || !(b.email || b.phone))
-    return NextResponse.json({ ok: false, error: "Missing required fields" }, { status: 400 });
-  const ref = "BL-" + Math.random().toString(36).slice(2, 7).toUpperCase();
-  store.push({ ...b, ref, createdAt: new Date().toISOString() });
-  return NextResponse.json({ ok: true, ref });
+  if (!b) return NextResponse.json({ ok: false, error: "Invalid request" }, { status: 400 });
+  try { const bk = await createBooking({ ...b, source: "form" }); return NextResponse.json({ ok: true, ref: bk.ref, booking: bk }); }
+  catch (e: any) {
+    if (e instanceof SlotTaken) return NextResponse.json({ ok: false, error: "Sorry, that slot was just taken. Please pick another time." }, { status: 409 });
+    return NextResponse.json({ ok: false, error: e?.message || "Could not book" }, { status: 400 });
+  }
 }
-export async function GET() { return NextResponse.json({ count: store.length }); }

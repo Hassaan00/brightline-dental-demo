@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, ShieldCheck, Star, Clock, Sparkles, CalendarCheck2, MessageSquareText, BellRing, MapPin, Phone, Award, Languages, Check } from "lucide-react";
+import { ArrowRight, ShieldCheck, Star, Clock, Sparkles, CalendarCheck2, MessageSquareText, BellRing, MapPin, Phone, Award, Languages, Check, Mic } from "lucide-react";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import Reveal from "@/components/Reveal";
@@ -31,7 +31,7 @@ export default function Home() {
               <Reveal delay={0.15}>
                 <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                   <Link href="/book" className="btn-primary !px-6 !py-3.5 text-[15px]">Book in 30 seconds <ArrowRight size={16} /></Link>
-                  <OpenChat className="btn-ghost !px-6 !py-3.5 text-[15px]"><MessageSquareText size={16} /> Chat with Ava</OpenChat>
+                  <OpenChat voice className="btn-ghost !px-6 !py-3.5 text-[15px]"><span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-400 opacity-75" /><span className="relative inline-flex h-2 w-2 rounded-full bg-brand-500" /></span><Mic size={16} /> Talk to Ava</OpenChat>
                 </div>
               </Reveal>
               <Reveal delay={0.2}>

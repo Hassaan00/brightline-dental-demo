@@ -1,4 +1,4 @@
 "use client";
-export default function OpenChat({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <button className={className} onClick={() => window.dispatchEvent(new Event("open-chat"))}>{children}</button>;
+export default function OpenChat({ children, className, voice = false }: { children: React.ReactNode; className?: string; voice?: boolean }) {
+  return <button className={className} onClick={() => window.dispatchEvent(new Event(voice ? "open-voice" : "open-chat"))}>{children}</button>;
 }

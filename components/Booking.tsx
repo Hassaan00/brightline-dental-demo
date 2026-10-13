@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
@@ -12,13 +12,15 @@ export default function Booking() {
   const [step, setStep] = useState(0);
   const [f, setF] = useState({ service: sp.get("service") || "", dentist: "", date: "", time: "", name: "", email: "", phone: "", notes: "" });
   const [loading, setLoading] = useState(false); const [ref, setRef] = useState(""); const [err, setErr] = useState("");
-  const days = useMemo(() => { const out: Date[] = []; const d = new Date(); while (out.length < 10) { d.setDate(d.getDate() + 1); if (d.getDay() !== 0) out.push(new Date(d)); } return out; }, []);
-  const taken = (di: number, t: string) => (di * 7 + t.length * 3) % 5 === 0;
+  const days = useMemo(() => { const out: Date[] = []; const d = new Date(); while (out.length < 10) { d.setDate(d.getDate() + 1); d.setHours(12, 0, 0, 0); if (d.getDay() !== 0) out.push(new Date(d)); } return out; }, []);
+  const [free, setFree] = useState<string[] | null>(null);
+  useEffect(() => { setFree(null); if (!f.date || !f.dentist) return; fetch(`/api/availability?date=${f.date.slice(0, 10)}&dentist=${f.dentist}`).then((r) => r.json()).then((j) => setFree(j.slots?.[f.dentist] || [])).catch(() => setFree(times)); }, [f.date, f.dentist]);
+  const taken = (_: number, t: string) => free !== null && !free.includes(t);
   const ok = [!!f.service, !!f.dentist, !!f.date && !!f.time, f.name.trim().length > 1 && /\S+@\S+\.\S+/.test(f.email)][step];
   const svc = services.find((s) => s.id === f.service); const doc = dentists.find((d) => d.id === f.dentist);
   async function submit() {
     setLoading(true); setErr("");
-    try { const r = await fetch("/api/book", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(f) }); const j = await r.json(); if (j.ok) setRef(j.ref); else setErr(j.error); } catch { setErr("Network error, please try again."); }
+    try { const r = await fetch("/api/book", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...f, date: f.date.slice(0, 10) }) }); const j = await r.json(); if (j.ok) setRef(j.ref); else { setErr(j.error); if (r.status === 409) { setF((x) => ({ ...x, time: "" })); setStep(2); } } } catch { setErr("Network error, please try again."); }
     setLoading(false);
   }
   const card = (active: boolean) => `w-full rounded-2xl border p-4 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500 ${active ? "border-brand-500 bg-brand-50/60 ring-1 ring-brand-500" : "border-slate-200 bg-white hover:border-slate-300"}`;
@@ -55,10 +57,10 @@ export default function Booking() {
               {([["name", "Full name", "text", "Jordan Lee"], ["email", "Email", "email", "jordan@email.com"], ["phone", "Mobile (for reminders)", "tel", "(512) 555-0199"]] as const).map(([k, l, t, p]) => <label key={k} className={`text-sm font-medium text-slate-700 ${k === "name" ? "sm:col-span-2" : ""}`}>{l}<input type={t} placeholder={p} value={f[k]} onChange={(e) => setF({ ...f, [k]: e.target.value })} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 font-normal outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100" /></label>)}
               <label className="text-sm font-medium text-slate-700 sm:col-span-2">Anything we should know? <span className="font-normal text-slate-400">(optional)</span><textarea rows={3} value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 font-normal outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100" /></label>
               <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600 sm:col-span-2"><CalendarCheck2 size={16} className="mr-2 inline text-brand-600" />{svc?.name} with {doc?.name} · {f.date && new Date(f.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })} at {f.time}</div>
-              {err && <p role="alert" className="text-sm text-red-600 sm:col-span-2">{err}</p>}
             </div>}
           </motion.div>
         </AnimatePresence>
+        {err && <p role="alert" className="mt-6 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{err}</p>}
         <div className="mt-8 flex items-center justify-between border-t border-slate-100 pt-5">
           <button onClick={() => setStep(step - 1)} disabled={step === 0} className="inline-flex items-center gap-1.5 text-sm text-slate-600 disabled:invisible"><ArrowLeft size={15} /> Back</button>
           {step < 3 ? <button onClick={() => setStep(step + 1)} disabled={!ok} className="btn-primary disabled:opacity-40">Continue <ArrowRight size={15} /></button>

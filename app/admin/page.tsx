@@ -2,9 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Bot, Moon, TrendingDown, DollarSign, LayoutDashboard, CalendarDays, MessageSquareText, Users, Settings, ArrowUpRight, Sparkles, Bell } from "lucide-react";
 import Logo from "@/components/Logo";
+import { listBookings, storageName, type Booking } from "@/lib/store";
+import { services, dentists } from "@/lib/clinic";
+import { Mic, FileText } from "lucide-react";
+export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Clinic dashboard", robots: { index: false } };
-const kpis = [
-  { l: "Bookings handled by AI", v: "412", d: "+38% vs last month", i: Bot },
+const kpiBase = (ai: number) => [
+  { l: "Bookings handled by AI", v: String(412 + ai), d: ai ? `incl. ${ai} live AI booking${ai > 1 ? "s" : ""}` : "+38% vs last month", i: Bot },
   { l: "After-hours leads captured", v: "167", d: "41% of all leads", i: Moon },
   { l: "No-show rate", v: "4.1%", d: "down from 14.8%", i: TrendingDown },
   { l: "Revenue recovered", v: "$48,920", d: "this month", i: DollarSign },
@@ -21,7 +25,13 @@ const convos = [
 ];
 const tagc: Record<string, string> = { Booked: "bg-emerald-50 text-emerald-700", Lead: "bg-sky-50 text-sky-700", Urgent: "bg-rose-50 text-rose-700", Rescheduled: "bg-amber-50 text-amber-700" };
 function line(d: number[], w = 560, h = 180) { const mx = 70; return d.map((v, i) => `${(i / (d.length - 1)) * w},${h - (v / mx) * h}`).join(" "); }
-export default function Admin() {
+const srcStyle: Record<string, string> = { chat: "bg-brand-50 text-brand-700", voice: "bg-violet-50 text-violet-700", form: "bg-slate-100 text-slate-600" };
+const srcIcon = { chat: MessageSquareText, voice: Mic, form: FileText } as const;
+export default async function Admin() {
+  let bookings: Booking[] = []; let err = false;
+  try { bookings = await listBookings(); } catch { err = true; }
+  const aiCount = bookings.filter((b) => b.source !== "form").length;
+  const kpis = kpiBase(aiCount);
   return (
     <div className="flex min-h-screen bg-slate-50">
       <aside className="hidden w-60 shrink-0 flex-col border-r border-slate-200 bg-white p-5 lg:flex">
@@ -34,10 +44,36 @@ export default function Admin() {
       <main id="main" className="flex-1 p-5 sm:p-8">
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div><p className="text-sm text-slate-500">Brightline Dental Studio · October 2026</p><h1 className="font-display text-3xl tracking-tight">Good morning, Dr. Chen</h1></div>
-          <div className="flex items-center gap-2"><span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-500">Demo data</span><button aria-label="Notifications" className="grid h-9 w-9 place-items-center rounded-full border border-slate-200 bg-white"><Bell size={16} /></button><Link href="/" className="btn-primary !py-2">View site <ArrowUpRight size={14} /></Link></div>
+          <div className="flex items-center gap-2"><span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-500">Mock KPIs + live bookings</span><button aria-label="Notifications" className="grid h-9 w-9 place-items-center rounded-full border border-slate-200 bg-white"><Bell size={16} /></button><Link href="/" className="btn-primary !py-2">View site <ArrowUpRight size={14} /></Link></div>
         </header>
         <section className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Key metrics">
           {kpis.map((k) => <div key={k.l} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-soft"><div className="flex items-center justify-between text-sm text-slate-500">{k.l}<span className="grid h-8 w-8 place-items-center rounded-xl bg-brand-50 text-brand-700"><k.i size={16} /></span></div><p className="mt-4 font-display text-4xl tracking-tight">{k.v}</p><p className="mt-1 text-xs font-medium text-emerald-600">{k.d}</p></div>)}
+        </section>
+
+        <section className="mt-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-soft" aria-label="Live bookings">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div><h2 className="flex items-center gap-2 font-semibold"><span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" /><span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" /></span>Live bookings</h2><p className="text-xs text-slate-500">Real appointments from chat, voice and the booking form · newest first</p></div>
+            <div className="flex gap-2 text-xs">{(["chat", "voice", "form"] as const).map((s) => <span key={s} className={`rounded-full px-2.5 py-1 font-medium ${srcStyle[s]}`}>{bookings.filter((b) => b.source === s).length} {s}</span>)}</div>
+          </div>
+          {err ? <p className="mt-6 text-sm text-rose-600">Could not load bookings.</p> : bookings.length === 0 ? <p className="mt-6 rounded-2xl border border-dashed border-slate-200 p-8 text-center text-sm text-slate-500">No bookings yet. Book through Ava or /book and it appears here instantly.</p> : (
+            <div className="mt-5 overflow-x-auto">
+              <table className="w-full min-w-[640px] text-left text-sm">
+                <thead className="text-xs text-slate-400"><tr>{["Ref", "Patient", "Service", "Dentist", "Appointment", "Source", "Booked"].map((h) => <th key={h} className="pb-3 font-medium">{h}</th>)}</tr></thead>
+                <tbody className="divide-y divide-slate-100">
+                  {bookings.slice(0, 25).map((b) => { const I = srcIcon[b.source] || FileText; return (
+                    <tr key={b.ref}>
+                      <td className="py-3 font-mono text-xs text-slate-500">{b.ref}</td>
+                      <td className="py-3 font-medium">{b.name}</td>
+                      <td className="py-3 text-slate-600">{services.find((s) => s.id === b.service)?.name}</td>
+                      <td className="py-3 text-slate-600">{dentists.find((d) => d.id === b.dentist)?.name.replace(/,.*/, "")}</td>
+                      <td className="py-3 text-slate-600">{new Date(b.date + "T12:00:00Z").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" })} · {b.time}</td>
+                      <td className="py-3"><span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium capitalize ${srcStyle[b.source]}`}><I size={11} />{b.source}</span></td>
+                      <td className="py-3 text-xs text-slate-400">{new Date(b.createdAt).toLocaleString("en-US", { timeZone: "America/Chicago", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} CT</td>
+                    </tr>); })}
+                </tbody>
+              </table>
+            </div>)}
+          <p className="mt-4 text-[11px] text-slate-400">Storage: {storageName === "vercel-blob" ? "Vercel Blob (persistent)" : "in-memory (demo)"}</p>
         </section>
         <section className="mt-4 grid gap-4 xl:grid-cols-[1.6fr_1fr]">
           <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-soft">
