@@ -41,12 +41,13 @@ const tools = [
 ];
 
 class Busy extends Error {}
-async function groq(key: string, messages: any[], retried = false): Promise<any> {
+async function groq(key: string, messages: any[], retried = false, model = "openai/gpt-oss-20b"): Promise<any> {
   const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "openai/gpt-oss-20b", max_tokens: 800, temperature: 0.3, reasoning_effort: "low", messages, tools, tool_choice: "auto" }), signal: AbortSignal.timeout(20000),
+    body: JSON.stringify({ model, max_tokens: 800, temperature: 0.3, reasoning_effort: "low", messages, tools, tool_choice: "auto" }), signal: AbortSignal.timeout(20000),
   });
-  if (r.status === 429) { const ra = Math.min(8, parseFloat(r.headers.get("retry-after") || "3") || 3); if (!retried) { await new Promise((ok) => setTimeout(ok, ra * 1000)); return groq(key, messages, true); } throw new Busy(); }
+  if (r.status === 429) { const t = await r.clone().text().catch(() => ""); if (/per day|TPD|RPD/i.test(t)) { if (model !== "openai/gpt-oss-120b") return groq(key, messages, false, "openai/gpt-oss-120b"); throw new Error("groq daily quota reached"); } }
+  if (r.status === 429) { const ra = Math.min(8, parseFloat(r.headers.get("retry-after") || "3") || 3); if (!retried) { await new Promise((ok) => setTimeout(ok, ra * 1000)); return groq(key, messages, true, model); } throw new Busy(); }
   if (!r.ok) throw new Error("groq " + r.status + " " + (await r.text()).slice(0, 200));
   return (await r.json()).choices?.[0]?.message;
 }
