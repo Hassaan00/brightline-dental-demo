@@ -1,0 +1,12 @@
+@tailwind base; @tailwind components; @tailwind utilities;
+:root { color-scheme: light; }
+html { scroll-behavior: smooth; }
+body { @apply bg-white text-slate-900 antialiased; font-feature-settings: "cv11","ss01"; }
+.container-x { @apply mx-auto w-full max-w-6xl px-5 sm:px-8; }
+.glass { @apply bg-white/70 backdrop-blur-xl border border-slate-200/70 shadow-soft; }
+.btn-primary { @apply inline-flex items-center justify-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-sm font-medium text-white shadow-soft transition hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500; }
+.btn-ghost { @apply inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500; }
+.eyebrow { @apply inline-flex items-center gap-2 rounded-full border border-brand-200 bg-brand-50 px-3 py-1 text-xs font-medium text-brand-700; }
+.h2 { @apply font-display text-3xl tracking-tight text-slate-900 sm:text-[2.6rem] sm:leading-[1.1]; }
+.grid-bg { background-image: linear-gradient(to right, rgba(15,23,42,.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(15,23,42,.05) 1px, transparent 1px); background-size: 48px 48px; mask-image: radial-gradient(ellipse at 50% 0%, black 30%, transparent 75%); }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
